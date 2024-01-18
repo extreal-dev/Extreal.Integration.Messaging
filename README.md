@@ -1,1 +1,1 @@
-# Extreal.Integration.Messaging.Common
+# Extreal.Integration.Messaging

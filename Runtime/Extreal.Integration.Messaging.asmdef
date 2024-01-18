@@ -1,0 +1,19 @@
+{
+    "name": "Extreal.Integration.Messaging",
+    "rootNamespace": "Extreal.Integration.Messaging",
+    "references": [
+        "Extreal.Core.Logging",
+        "Extreal.Core.Common",
+        "UniRx",
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
