@@ -13,11 +13,17 @@ namespace Extreal.Integration.Messaging
         public string GroupName { get; }
 
         /// <summary>
-        /// Create a new MessagingJoiningConfig.
+        /// Max capacity.
+        /// </summary>
+        public int MaxCapacity { get; }
+
+        /// <summary>
+        /// Creates a new GroupConfig.
         /// </summary>
         /// <param name="groupName">Group name.</param>
-        /// <exception cref="ArgumentNullException">When groupName if null.</exception>
-        public MessagingJoiningConfig(string groupName)
+        /// <param name="maxCapacity">Max capacity.</param>
+        /// <exception cref="ArgumentNullException">When groupName is null.</exception>
+        public MessagingJoiningConfig(string groupName, int maxCapacity = 100)
         {
             if (string.IsNullOrEmpty(groupName))
             {
@@ -25,6 +31,7 @@ namespace Extreal.Integration.Messaging
             }
 
             GroupName = groupName;
+            MaxCapacity = maxCapacity;
         }
     }
 }

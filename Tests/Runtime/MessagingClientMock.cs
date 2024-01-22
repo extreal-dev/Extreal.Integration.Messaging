@@ -6,8 +6,8 @@ namespace Extreal.Integration.Messaging.Test
 {
     public class MessagingClientMock : MessagingClient
     {
-        private readonly string localUserId = nameof(localUserId);
-        private readonly string otherUserId = nameof(otherUserId);
+        private readonly string localClientId = nameof(localClientId);
+        private readonly string otherClientId = nameof(otherClientId);
 
         private static readonly ELogger Logger = LoggingManager.GetLogger(nameof(MessagingClientMock));
 
@@ -27,41 +27,6 @@ namespace Extreal.Integration.Messaging.Test
             return UniTask.FromResult(groupListResponse);
         }
 
-        protected override UniTask<CreateGroupResponse> DoCreateGroupAsync(GroupConfig groupConfig)
-        {
-            CreateGroupResponse createGroupResponse;
-            if (groupConfig.GroupName == "AlreadyExistedGroupName")
-            {
-                createGroupResponse = new CreateGroupResponse
-                {
-                    Status = 409,
-                    Message = "Group already exists",
-                };
-            }
-            else
-            {
-                if (Logger.IsDebug())
-                {
-                    Logger.LogDebug($"Group is created: groupName={groupConfig.GroupName}");
-                }
-                createGroupResponse = new CreateGroupResponse
-                {
-                    Status = 200,
-                    Message = "Group have been created",
-                };
-            }
-            return UniTask.FromResult(createGroupResponse);
-        }
-
-        public override UniTask DeleteGroupAsync(string groupName)
-        {
-            if (Logger.IsDebug())
-            {
-                Logger.LogDebug($"{nameof(DeleteGroupAsync)}: groupName={groupName}");
-            }
-            return UniTask.CompletedTask;
-        }
-
         protected override UniTask DoJoinAsync(MessagingJoiningConfig connectionConfig)
         {
             if (connectionConfig.GroupName == "JoiningApprovalReject")
@@ -71,7 +36,7 @@ namespace Extreal.Integration.Messaging.Test
             else
             {
                 SetJoiningGroupStatus(true);
-                FireOnJoined(localUserId);
+                FireOnJoined(localClientId);
             }
             return UniTask.CompletedTask;
         }
@@ -94,13 +59,13 @@ namespace Extreal.Integration.Messaging.Test
         public void FireOnUnexpectedLeft()
             => FireOnUnexpectedLeft("unknown");
 
-        public void FireOnUserJoined()
-            => FireOnUserJoined(otherUserId);
+        public void FireOnClientJoined()
+            => FireOnClientJoined(otherClientId);
 
-        public void FireOnUserLeaving()
-            => FireOnUserLeaving(otherUserId);
+        public void FireOnClientLeaving()
+            => FireOnClientLeaving(otherClientId);
 
         public void FireOnMessageReceived(string message)
-            => FireOnMessageReceived(otherUserId, message);
+            => FireOnMessageReceived(otherClientId, message);
     }
 }
