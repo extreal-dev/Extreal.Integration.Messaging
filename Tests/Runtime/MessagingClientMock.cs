@@ -14,8 +14,7 @@ namespace Extreal.Integration.Messaging.Test
         protected override UniTask<GroupListResponse> DoListGroupsAsync()
         {
             var groups = new List<GroupResponse> {
-                new GroupResponse{
-                    Id = "TestId",
+                new GroupResponse {
                     Name = "TestName",
                 }
             };

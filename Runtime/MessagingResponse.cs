@@ -14,9 +14,6 @@ namespace Extreal.Integration.Messaging
     [SuppressMessage("Usage", "CC0047")]
     public class GroupResponse
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; }
-
         [JsonPropertyName("name")]
         public string Name { get; set; }
     }
