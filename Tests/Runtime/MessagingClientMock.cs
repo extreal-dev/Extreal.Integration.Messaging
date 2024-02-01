@@ -35,17 +35,12 @@ namespace Extreal.Integration.Messaging.Test
             }
             else
             {
-                SetJoiningGroupStatus(true);
                 FireOnJoined(localClientId);
             }
             return UniTask.CompletedTask;
         }
 
-        protected override UniTask DoLeaveAsync()
-        {
-            SetJoiningGroupStatus(false);
-            return UniTask.CompletedTask;
-        }
+        protected override UniTask DoLeaveAsync() => UniTask.CompletedTask;
 
         protected override UniTask DoSendMessageAsync(string message, string to)
         {

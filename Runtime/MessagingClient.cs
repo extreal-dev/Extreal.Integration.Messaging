@@ -15,14 +15,6 @@ namespace Extreal.Integration.Messaging
     public abstract class MessagingClient : DisposableBase
     {
         /// <summary>
-        /// Whether this client has joined a group or not.
-        /// </summary>
-        /// <value>True if joined, false otherwise.</value>
-        public bool IsJoinedGroup { get; private set; }
-        protected void SetJoiningGroupStatus(bool isJoinedGroup)
-            => IsJoinedGroup = isJoinedGroup;
-
-        /// <summary>
         /// IDs of joined clients.
         /// </summary>
         public IReadOnlyList<string> JoinedClients => joinedClients;
@@ -76,7 +68,6 @@ namespace Extreal.Integration.Messaging
             {
                 Logger.LogDebug($"{nameof(FireOnUnexpectedLeft)}: reason={reason}");
             }
-            SetJoiningGroupStatus(false);
             onUnexpectedLeft.OnNext(reason);
         });
 
@@ -147,6 +138,8 @@ namespace Extreal.Integration.Messaging
             onMessageReceived.OnNext((clientId, message));
         });
 
+        private bool isJoined;
+
         private readonly CompositeDisposable disposables = new CompositeDisposable();
         private static readonly ELogger Logger = LoggingManager.GetLogger(nameof(MessagingClient));
 
@@ -163,6 +156,15 @@ namespace Extreal.Integration.Messaging
             onClientLeaving = new Subject<string>().AddTo(disposables);
             onJoiningApprovalRejected = new Subject<Unit>().AddTo(disposables);
             onMessageReceived = new Subject<(string, string)>().AddTo(disposables);
+
+            OnJoined
+                .Subscribe(_ => isJoined = true)
+                .AddTo(disposables);
+
+            OnLeaving
+                .Merge(OnUnexpectedLeft)
+                .Subscribe(_ => isJoined = false)
+                .AddTo(disposables);
 
             OnClientJoined
                 .Subscribe(joinedClients.Add)
@@ -257,7 +259,7 @@ namespace Extreal.Integration.Messaging
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (!IsJoinedGroup)
+            if (!isJoined)
             {
                 if (Logger.IsWarn())
                 {

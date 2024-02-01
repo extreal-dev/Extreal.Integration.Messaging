@@ -12,12 +12,6 @@ namespace Extreal.Integration.Messaging
     public class QueuingMessagingClient : DisposableBase
     {
         /// <summary>
-        /// Whether this client has joined a group or not.
-        /// </summary>
-        /// <value>True if joined, false otherwise.</value>
-        public bool IsJoinedGroup => messagingClient.IsJoinedGroup;
-
-        /// <summary>
         /// IDs of joined clients.
         /// </summary>
         public IReadOnlyList<string> JoinedClients => messagingClient.JoinedClients;
@@ -62,6 +56,8 @@ namespace Extreal.Integration.Messaging
         private readonly Queue<(string, string)> requestQueue = new Queue<(string, string)>();
         private readonly Queue<(string, string)> responseQueue = new Queue<(string, string)>();
 
+        private bool isJoined;
+
         private readonly CompositeDisposable disposables = new CompositeDisposable();
 
         /// <summary>
@@ -77,6 +73,15 @@ namespace Extreal.Integration.Messaging
             }
 
             this.messagingClient = messagingClient.AddTo(disposables);
+
+            messagingClient.OnJoined
+                .Subscribe(_ => isJoined = true)
+                .AddTo(disposables);
+
+            messagingClient.OnLeaving
+                .Merge(messagingClient.OnUnexpectedLeft)
+                .Subscribe(_ => isJoined = false)
+                .AddTo(disposables);
 
             messagingClient.OnMessageReceived
                 .Subscribe(responseQueue.Enqueue)
@@ -95,7 +100,7 @@ namespace Extreal.Integration.Messaging
             while (requestQueue.Count > 0)
             {
                 (var to, var message) = requestQueue.Dequeue();
-                if (IsJoinedGroup)
+                if (isJoined)
                 {
                     await messagingClient.SendMessageAsync(message, to);
                 }

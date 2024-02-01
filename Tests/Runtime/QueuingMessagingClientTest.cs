@@ -92,12 +92,10 @@ namespace Extreal.Integration.Messaging.Test
             var joiningConfig = new MessagingJoiningConfig("MessagingTest");
 
             Assert.That(eventHandler.ClientId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
 
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
             Assert.That(eventHandler.ClientId, Is.EqualTo(localClientId));
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.True);
         });
 
         [UnityTest]
@@ -124,13 +122,11 @@ namespace Extreal.Integration.Messaging.Test
             var joiningConfig = new MessagingJoiningConfig("JoiningApprovalReject");
 
             Assert.That(eventHandler.ClientId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
             Assert.That(eventHandler.IsJoiningApprovalRejected, Is.False);
 
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
             Assert.That(eventHandler.ClientId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
             Assert.That(eventHandler.IsJoiningApprovalRejected, Is.True);
         });
 
@@ -141,12 +137,10 @@ namespace Extreal.Integration.Messaging.Test
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
             Assert.That(eventHandler.LeavingReason, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.True);
 
             await queuingMessagingClient.LeaveAsync();
 
             Assert.That(eventHandler.LeavingReason, Is.EqualTo("leave request"));
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
         });
 
         [Test]
