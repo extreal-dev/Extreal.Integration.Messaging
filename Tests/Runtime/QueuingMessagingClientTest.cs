@@ -6,7 +6,6 @@ using UnityEngine.TestTools;
 using System.Collections;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using System.Text.RegularExpressions;
 using Extreal.Core.Logging;
 using System.Collections.Generic;
 
