@@ -6,7 +6,6 @@ using UnityEngine.TestTools;
 using System.Collections;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using System.Text.RegularExpressions;
 using Extreal.Core.Logging;
 using System.Collections.Generic;
 
@@ -17,8 +16,8 @@ namespace Extreal.Integration.Messaging.Test
         private MessagingClientMock messagingClient;
         private QueuingMessagingClient queuingMessagingClient;
 
-        private readonly string localUserId = nameof(localUserId);
-        private readonly string otherUserId = nameof(otherUserId);
+        private readonly string localClientId = nameof(localClientId);
+        private readonly string otherClientId = nameof(otherClientId);
 
         private readonly EventHandler eventHandler = new EventHandler();
         [SuppressMessage("CodeCracker", "CC0033")]
@@ -33,7 +32,7 @@ namespace Extreal.Integration.Messaging.Test
             queuingMessagingClient = new QueuingMessagingClient(messagingClient).AddTo(disposables);
 
             queuingMessagingClient.OnJoined
-                .Subscribe(eventHandler.SetUserId)
+                .Subscribe(eventHandler.SetClientId)
                 .AddTo(disposables);
 
             queuingMessagingClient.OnLeaving
@@ -48,12 +47,12 @@ namespace Extreal.Integration.Messaging.Test
                 .Subscribe(_ => eventHandler.SetIsJoiningApprovalRejected(true))
                 .AddTo(disposables);
 
-            queuingMessagingClient.OnUserJoined
-                .Subscribe(eventHandler.SetJoinedUserId)
+            queuingMessagingClient.OnClientJoined
+                .Subscribe(eventHandler.SetJoinedClientId)
                 .AddTo(disposables);
 
-            queuingMessagingClient.OnUserLeaving
-                .Subscribe(eventHandler.SetLeavingUserId)
+            queuingMessagingClient.OnClientLeaving
+                .Subscribe(eventHandler.SetLeavingClientId)
                 .AddTo(disposables);
         }
 
@@ -82,46 +81,7 @@ namespace Extreal.Integration.Messaging.Test
             var groups = await queuingMessagingClient.ListGroupsAsync();
             Assert.That(groups, Is.Not.Null);
             Assert.That(groups.Count, Is.EqualTo(1));
-            Assert.That(groups[0].Id, Is.EqualTo("TestId"));
             Assert.That(groups[0].Name, Is.EqualTo("TestName"));
-        });
-
-        [UnityTest]
-        public IEnumerator CreateGroupSuccess() => UniTask.ToCoroutine(async () =>
-        {
-            const string groupName = "TestGroup";
-            var groupConfig = new GroupConfig(groupName);
-            await queuingMessagingClient.CreateGroupAsync(groupConfig);
-            LogAssert.Expect(LogType.Log, new Regex($".*Group is created: groupName={groupConfig.GroupName}.*"));
-        });
-
-        [UnityTest]
-        public IEnumerator CreateGroupWithAlreadyExistedGroupName() => UniTask.ToCoroutine(async () =>
-        {
-            const string groupName = "AlreadyExistedGroupName";
-            var groupConfig = new GroupConfig(groupName);
-
-            var exception = default(Exception);
-            try
-            {
-                await queuingMessagingClient.CreateGroupAsync(groupConfig);
-            }
-            catch (Exception e)
-            {
-                exception = e;
-            }
-
-            Assert.That(exception, Is.Not.Null);
-            Assert.That(exception.GetType(), Is.EqualTo(typeof(GroupNameAlreadyExistsException)));
-            Assert.That(exception.Message, Does.Contain("Group already exists"));
-        });
-
-        [UnityTest]
-        public IEnumerator DeleteGroupSuccess() => UniTask.ToCoroutine(async () =>
-        {
-            const string groupName = "TestGroup";
-            await queuingMessagingClient.DeleteGroupAsync(groupName);
-            LogAssert.Expect(LogType.Log, new Regex($".*{nameof(queuingMessagingClient.DeleteGroupAsync)}: groupName={groupName}.*"));
         });
 
         [UnityTest]
@@ -129,13 +89,11 @@ namespace Extreal.Integration.Messaging.Test
         {
             var joiningConfig = new MessagingJoiningConfig("MessagingTest");
 
-            Assert.That(eventHandler.UserId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
+            Assert.That(eventHandler.ClientId, Is.Null);
 
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
-            Assert.That(eventHandler.UserId, Is.EqualTo(localUserId));
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.True);
+            Assert.That(eventHandler.ClientId, Is.EqualTo(localClientId));
         });
 
         [UnityTest]
@@ -161,14 +119,12 @@ namespace Extreal.Integration.Messaging.Test
         {
             var joiningConfig = new MessagingJoiningConfig("JoiningApprovalReject");
 
-            Assert.That(eventHandler.UserId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
+            Assert.That(eventHandler.ClientId, Is.Null);
             Assert.That(eventHandler.IsJoiningApprovalRejected, Is.False);
 
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
-            Assert.That(eventHandler.UserId, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
+            Assert.That(eventHandler.ClientId, Is.Null);
             Assert.That(eventHandler.IsJoiningApprovalRejected, Is.True);
         });
 
@@ -179,12 +135,10 @@ namespace Extreal.Integration.Messaging.Test
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
             Assert.That(eventHandler.LeavingReason, Is.Null);
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.True);
 
             await queuingMessagingClient.LeaveAsync();
 
             Assert.That(eventHandler.LeavingReason, Is.EqualTo("leave request"));
-            Assert.That(queuingMessagingClient.IsJoinedGroup, Is.False);
         });
 
         [Test]
@@ -196,26 +150,26 @@ namespace Extreal.Integration.Messaging.Test
         }
 
         [Test]
-        public void UserJoined()
+        public void ClientJoined()
         {
-            Assert.That(eventHandler.JoinedUserId, Is.Null);
-            Assert.That(queuingMessagingClient.JoinedUsers.Count, Is.Zero);
-            messagingClient.FireOnUserJoined();
-            Assert.That(eventHandler.JoinedUserId, Is.EqualTo(otherUserId));
-            Assert.That(queuingMessagingClient.JoinedUsers.Count, Is.EqualTo(1));
-            Assert.That(queuingMessagingClient.JoinedUsers[0], Is.EqualTo(eventHandler.JoinedUserId));
+            Assert.That(eventHandler.JoinedClientId, Is.Null);
+            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.Zero);
+            messagingClient.FireOnClientJoined();
+            Assert.That(eventHandler.JoinedClientId, Is.EqualTo(otherClientId));
+            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.EqualTo(1));
+            Assert.That(queuingMessagingClient.JoinedClients[0], Is.EqualTo(eventHandler.JoinedClientId));
         }
 
         [Test]
-        public void UserLeaving()
+        public void ClientLeaving()
         {
-            messagingClient.FireOnUserJoined();
-            Assert.That(queuingMessagingClient.JoinedUsers.Count, Is.EqualTo(1));
+            messagingClient.FireOnClientJoined();
+            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.EqualTo(1));
 
-            Assert.That(eventHandler.LeavingUserId, Is.Null);
-            messagingClient.FireOnUserLeaving();
-            Assert.That(eventHandler.LeavingUserId, Is.EqualTo(otherUserId));
-            Assert.That(queuingMessagingClient.JoinedUsers.Count, Is.Zero);
+            Assert.That(eventHandler.LeavingClientId, Is.Null);
+            messagingClient.FireOnClientLeaving();
+            Assert.That(eventHandler.LeavingClientId, Is.EqualTo(otherClientId));
+            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.Zero);
         }
 
         [UnityTest]
@@ -258,7 +212,7 @@ namespace Extreal.Integration.Messaging.Test
             messagingClient.FireOnMessageReceived(message);
 
             (var from, var receivedMessage) = queuingMessagingClient.DequeueResponse();
-            Assert.That(from, Is.EqualTo(otherUserId));
+            Assert.That(from, Is.EqualTo(otherClientId));
             Assert.That(receivedMessage, Is.EqualTo(message));
         }
 
@@ -292,9 +246,9 @@ namespace Extreal.Integration.Messaging.Test
 
         private class EventHandler
         {
-            public string UserId { get; private set; }
-            public void SetUserId(string userId)
-                => UserId = userId;
+            public string ClientId { get; private set; }
+            public void SetClientId(string clientId)
+                => ClientId = clientId;
 
             public string LeavingReason { get; private set; }
             public void SetLeavingReason(string reason)
@@ -308,13 +262,13 @@ namespace Extreal.Integration.Messaging.Test
             public void SetIsJoiningApprovalRejected(bool isJoiningApprovalRejected)
                 => IsJoiningApprovalRejected = isJoiningApprovalRejected;
 
-            public string JoinedUserId { get; private set; }
-            public void SetJoinedUserId(string userId)
-                => JoinedUserId = userId;
+            public string JoinedClientId { get; private set; }
+            public void SetJoinedClientId(string clientId)
+                => JoinedClientId = clientId;
 
-            public string LeavingUserId { get; private set; }
-            public void SetLeavingUserId(string userId)
-                => LeavingUserId = userId;
+            public string LeavingClientId { get; private set; }
+            public void SetLeavingClientId(string clientId)
+                => LeavingClientId = clientId;
 
             public string ReceivedMessageFrom { get; private set; }
             public string ReceivedMessage { get; private set; }
@@ -326,12 +280,12 @@ namespace Extreal.Integration.Messaging.Test
 
             public void Clear()
             {
-                SetUserId(default);
+                SetClientId(default);
                 SetLeavingReason(default);
                 SetUnexpectedLeftReason(default);
                 SetIsJoiningApprovalRejected(default);
-                SetJoinedUserId(default);
-                SetLeavingUserId(default);
+                SetJoinedClientId(default);
+                SetLeavingClientId(default);
                 SetReceivedMessageInfo(default);
             }
         }

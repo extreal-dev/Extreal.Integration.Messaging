@@ -12,19 +12,13 @@ namespace Extreal.Integration.Messaging
     public class QueuingMessagingClient : DisposableBase
     {
         /// <summary>
-        /// Whether this client has joined a group or not.
+        /// IDs of joined clients.
         /// </summary>
-        /// <value>True if joined, false otherwise.</value>
-        public bool IsJoinedGroup => messagingClient.IsJoinedGroup;
-
-        /// <summary>
-        /// IDs of joined users.
-        /// </summary>
-        public IReadOnlyList<string> JoinedUsers => messagingClient.JoinedUsers;
+        public IReadOnlyList<string> JoinedClients => messagingClient.JoinedClients;
 
         /// <summary>
         /// <para>Invokes immediately after this client joined a group.</para>
-        /// Arg: User ID of this client.
+        /// Arg: Client ID of this client.
         /// </summary>
         public IObservable<string> OnJoined => messagingClient.OnJoined;
 
@@ -46,21 +40,23 @@ namespace Extreal.Integration.Messaging
         public IObservable<Unit> OnJoiningApprovalRejected => messagingClient.OnJoiningApprovalRejected;
 
         /// <summary>
-        /// <para>Invokes immediately after a user joins the group this client joined.</para>
-        /// Arg: ID of the joined user.
+        /// <para>Invokes immediately after a client joins the group this client joined.</para>
+        /// Arg: ID of the joined client.
         /// </summary>
-        public IObservable<string> OnUserJoined => messagingClient.OnUserJoined;
+        public IObservable<string> OnClientJoined => messagingClient.OnClientJoined;
 
         /// <summary>
-        /// <para>Invokes just before a user leaves the group this client joined.</para>
-        /// Arg: ID of the left user.
+        /// <para>Invokes just before a client leaves the group this client joined.</para>
+        /// Arg: ID of the left client.
         /// </summary>
-        public IObservable<string> OnUserLeaving => messagingClient.OnUserLeaving;
+        public IObservable<string> OnClientLeaving => messagingClient.OnClientLeaving;
 
         private readonly MessagingClient messagingClient;
 
         private readonly Queue<(string, string)> requestQueue = new Queue<(string, string)>();
         private readonly Queue<(string, string)> responseQueue = new Queue<(string, string)>();
+
+        private bool isJoined;
 
         private readonly CompositeDisposable disposables = new CompositeDisposable();
 
@@ -77,6 +73,15 @@ namespace Extreal.Integration.Messaging
             }
 
             this.messagingClient = messagingClient.AddTo(disposables);
+
+            messagingClient.OnJoined
+                .Subscribe(_ => isJoined = true)
+                .AddTo(disposables);
+
+            messagingClient.OnLeaving
+                .Merge(messagingClient.OnUnexpectedLeft)
+                .Subscribe(_ => isJoined = false)
+                .AddTo(disposables);
 
             messagingClient.OnMessageReceived
                 .Subscribe(responseQueue.Enqueue)
@@ -95,7 +100,7 @@ namespace Extreal.Integration.Messaging
             while (requestQueue.Count > 0)
             {
                 (var to, var message) = requestQueue.Dequeue();
-                if (IsJoinedGroup)
+                if (isJoined)
                 {
                     await messagingClient.SendMessageAsync(message, to);
                 }
@@ -107,7 +112,7 @@ namespace Extreal.Integration.Messaging
         /// </summary>
         /// <param name="message">Message to be sent.</param>
         /// <param name="to">
-        ///     User ID of the destination.
+        ///     Client ID of the destination.
         ///     <para>Sends a message to the entire group if not specified.</para>
         /// </param>
         public void EnqueueRequest(string message, string to = default)
@@ -130,7 +135,7 @@ namespace Extreal.Integration.Messaging
         /// <summary>
         /// Dequeues from response queue.
         /// </summary>
-        /// <returns>ID of the user sending the message and the message.</returns>
+        /// <returns>ID of the client sending the message and the message.</returns>
         public (string from, string message) DequeueResponse()
             => responseQueue.Dequeue();
 
@@ -140,20 +145,6 @@ namespace Extreal.Integration.Messaging
         /// <returns>List of the groups that currently exist.</returns>
         public UniTask<List<Group>> ListGroupsAsync()
             => messagingClient.ListGroupsAsync();
-
-        /// <summary>
-        /// Creates a group.
-        /// </summary>
-        /// <param name="groupConfig">Config for the created group.</param>
-        public UniTask CreateGroupAsync(GroupConfig groupConfig)
-            => messagingClient.CreateGroupAsync(groupConfig);
-
-        /// <summary>
-        /// Deletes a group.
-        /// </summary>
-        /// <param name="groupName">Name of the deleted group.</param>
-        public UniTask DeleteGroupAsync(string groupName)
-            => messagingClient.DeleteGroupAsync(groupName);
 
         /// <summary>
         /// Joins a group.

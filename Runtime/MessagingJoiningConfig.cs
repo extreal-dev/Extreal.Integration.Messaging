@@ -13,10 +13,10 @@ namespace Extreal.Integration.Messaging
         public string GroupName { get; }
 
         /// <summary>
-        /// Create a new MessagingJoiningConfig.
+        /// Creates a new GroupConfig.
         /// </summary>
         /// <param name="groupName">Group name.</param>
-        /// <exception cref="ArgumentNullException">When groupName if null.</exception>
+        /// <exception cref="ArgumentNullException">When groupName is null.</exception>
         public MessagingJoiningConfig(string groupName)
         {
             if (string.IsNullOrEmpty(groupName))

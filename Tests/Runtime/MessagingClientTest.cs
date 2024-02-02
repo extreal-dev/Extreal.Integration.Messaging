@@ -15,8 +15,8 @@ namespace Extreal.Integration.Messaging.Test
     {
         private MessagingClientMock messagingClient;
 
-        private readonly string localUserId = nameof(localUserId);
-        private readonly string otherUserId = nameof(otherUserId);
+        private readonly string localClientId = nameof(localClientId);
+        private readonly string otherClientId = nameof(otherClientId);
 
         [SuppressMessage("CodeCracker", "CC0033")]
         private readonly CompositeDisposable disposables = new CompositeDisposable();

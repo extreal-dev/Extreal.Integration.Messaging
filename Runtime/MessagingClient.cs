@@ -15,34 +15,26 @@ namespace Extreal.Integration.Messaging
     public abstract class MessagingClient : DisposableBase
     {
         /// <summary>
-        /// Whether this client has joined a group or not.
+        /// IDs of joined clients.
         /// </summary>
-        /// <value>True if joined, false otherwise.</value>
-        public bool IsJoinedGroup { get; private set; }
-        protected void SetJoiningGroupStatus(bool isJoinedGroup)
-            => IsJoinedGroup = isJoinedGroup;
-
-        /// <summary>
-        /// IDs of joined users.
-        /// </summary>
-        public IReadOnlyList<string> JoinedUsers => joinedUsers;
-        private readonly List<string> joinedUsers = new List<string>();
+        public IReadOnlyList<string> JoinedClients => joinedClients;
+        private readonly List<string> joinedClients = new List<string>();
 
         /// <summary>
         /// <para>Invokes immediately after this client joined a group.</para>
-        /// Arg: User ID of this client.
+        /// Arg: Client ID of this client.
         /// </summary>
         public IObservable<string> OnJoined => onJoined;
         private readonly Subject<string> onJoined;
-        protected void FireOnJoined(string userId) => UniTask.Void(async () =>
+        protected void FireOnJoined(string clientId) => UniTask.Void(async () =>
         {
             await UniTask.SwitchToMainThread();
 
             if (Logger.IsDebug())
             {
-                Logger.LogDebug($"{nameof(FireOnJoined)}: userId={userId}");
+                Logger.LogDebug($"{nameof(FireOnJoined)}: clientId={clientId}");
             }
-            onJoined.OnNext(userId);
+            onJoined.OnNext(clientId);
         });
 
         /// <summary>
@@ -76,7 +68,6 @@ namespace Extreal.Integration.Messaging
             {
                 Logger.LogDebug($"{nameof(FireOnUnexpectedLeft)}: reason={reason}");
             }
-            SetJoiningGroupStatus(false);
             onUnexpectedLeft.OnNext(reason);
         });
 
@@ -97,55 +88,57 @@ namespace Extreal.Integration.Messaging
         });
 
         /// <summary>
-        /// <para>Invokes immediately after a user joined the same group this client joined.</para>
-        /// Arg: ID of the joined user.
+        /// <para>Invokes immediately after a client joined the same group this client joined.</para>
+        /// Arg: ID of the joined client.
         /// </summary>
-        public IObservable<string> OnUserJoined => onUserJoined;
-        private readonly Subject<string> onUserJoined;
-        protected void FireOnUserJoined(string userId) => UniTask.Void(async () =>
+        public IObservable<string> OnClientJoined => onClientJoined;
+        private readonly Subject<string> onClientJoined;
+        protected void FireOnClientJoined(string clientId) => UniTask.Void(async () =>
         {
             await UniTask.SwitchToMainThread();
 
             if (Logger.IsDebug())
             {
-                Logger.LogDebug($"{nameof(FireOnUserJoined)}: userId={userId}");
+                Logger.LogDebug($"{nameof(FireOnClientJoined)}: clientId={clientId}");
             }
-            onUserJoined.OnNext(userId);
+            onClientJoined.OnNext(clientId);
         });
 
         /// <summary>
-        /// <para>Invokes just before a user leaves the group this client joined.</para>
-        /// Arg: ID of the left user.
+        /// <para>Invokes just before a client leaves the group this client joined.</para>
+        /// Arg: ID of the left client.
         /// </summary>
-        public IObservable<string> OnUserLeaving => onUserLeaving;
-        private readonly Subject<string> onUserLeaving;
-        protected void FireOnUserLeaving(string userId) => UniTask.Void(async () =>
+        public IObservable<string> OnClientLeaving => onClientLeaving;
+        private readonly Subject<string> onClientLeaving;
+        protected void FireOnClientLeaving(string clientId) => UniTask.Void(async () =>
         {
             await UniTask.SwitchToMainThread();
 
             if (Logger.IsDebug())
             {
-                Logger.LogDebug($"{nameof(FireOnUserLeaving)}: userId={userId}");
+                Logger.LogDebug($"{nameof(FireOnClientLeaving)}: clientId={clientId}");
             }
-            onUserLeaving.OnNext(userId);
+            onClientLeaving.OnNext(clientId);
         });
 
         /// <summary>
         /// <para>Invokes immediately after the message is received.</para>
-        /// Arg: ID of the user sending the message and the message.
+        /// Arg: ID of the client sending the message and the message.
         /// </summary>
-        public IObservable<(string userId, string message)> OnMessageReceived => onMessageReceived;
+        public IObservable<(string clientId, string message)> OnMessageReceived => onMessageReceived;
         private readonly Subject<(string, string)> onMessageReceived;
-        protected void FireOnMessageReceived(string userId, string message) => UniTask.Void(async () =>
+        protected void FireOnMessageReceived(string clientId, string message) => UniTask.Void(async () =>
         {
             await UniTask.SwitchToMainThread();
 
             if (Logger.IsDebug())
             {
-                Logger.LogDebug($"{nameof(FireOnMessageReceived)}: userId={userId}, message={message}");
+                Logger.LogDebug($"{nameof(FireOnMessageReceived)}: clientId={clientId}, message={message}");
             }
-            onMessageReceived.OnNext((userId, message));
+            onMessageReceived.OnNext((clientId, message));
         });
+
+        private bool isJoined;
 
         private readonly CompositeDisposable disposables = new CompositeDisposable();
         private static readonly ELogger Logger = LoggingManager.GetLogger(nameof(MessagingClient));
@@ -159,17 +152,26 @@ namespace Extreal.Integration.Messaging
             onJoined = new Subject<string>().AddTo(disposables);
             onLeaving = new Subject<string>().AddTo(disposables);
             onUnexpectedLeft = new Subject<string>().AddTo(disposables);
-            onUserJoined = new Subject<string>().AddTo(disposables);
-            onUserLeaving = new Subject<string>().AddTo(disposables);
+            onClientJoined = new Subject<string>().AddTo(disposables);
+            onClientLeaving = new Subject<string>().AddTo(disposables);
             onJoiningApprovalRejected = new Subject<Unit>().AddTo(disposables);
             onMessageReceived = new Subject<(string, string)>().AddTo(disposables);
 
-            OnUserJoined
-                .Subscribe(joinedUsers.Add)
+            OnJoined
+                .Subscribe(_ => isJoined = true)
                 .AddTo(disposables);
 
-            OnUserLeaving
-                .Subscribe(userId => joinedUsers.Remove(userId))
+            OnLeaving
+                .Merge(OnUnexpectedLeft)
+                .Subscribe(_ => isJoined = false)
+                .AddTo(disposables);
+
+            OnClientJoined
+                .Subscribe(joinedClients.Add)
+                .AddTo(disposables);
+
+            OnClientLeaving
+                .Subscribe(clientId => joinedClients.Remove(clientId))
                 .AddTo(disposables);
         }
 
@@ -191,7 +193,7 @@ namespace Extreal.Integration.Messaging
         public async UniTask<List<Group>> ListGroupsAsync()
         {
             var groupList = await DoListGroupsAsync();
-            return groupList.Groups.Select(groupResponse => new Group(groupResponse.Id, groupResponse.Name)).ToList();
+            return groupList.Groups.Select(groupResponse => new Group(groupResponse.Name)).ToList();
         }
 
         /// <summary>
@@ -199,43 +201,6 @@ namespace Extreal.Integration.Messaging
         /// </summary>
         /// <returns>List of the groups that currently exist.</returns>
         protected abstract UniTask<GroupListResponse> DoListGroupsAsync();
-
-        /// <summary>
-        /// Creates a group.
-        /// </summary>
-        /// <param name="groupConfig">Config for the created group.</param>
-        public async UniTask CreateGroupAsync(GroupConfig groupConfig)
-        {
-            if (Logger.IsDebug())
-            {
-                Logger.LogDebug($"Create group: GroupName={groupConfig.GroupName}, MaxCapacity={groupConfig.MaxCapacity}");
-            }
-
-            var createGroupResponse = await DoCreateGroupAsync(groupConfig);
-            if (createGroupResponse.Status == 409)
-            {
-                if (Logger.IsDebug())
-                {
-                    Logger.LogDebug(createGroupResponse.Message);
-                }
-                throw new GroupNameAlreadyExistsException(createGroupResponse.Message);
-            }
-        }
-
-        /// <summary>
-        /// Creates a group in sub class.
-        /// </summary>
-        /// <remarks>
-        /// Let Status value of returned CreateGroupResponse be 409 when specified group Name already exists.
-        /// </remarks>
-        /// <param name="groupConfig">Config for the created group.</param>
-        protected abstract UniTask<CreateGroupResponse> DoCreateGroupAsync(GroupConfig groupConfig);
-
-        /// <summary>
-        /// Deletes a group.
-        /// </summary>
-        /// <param name="groupName">Name of the deleted group.</param>
-        public abstract UniTask DeleteGroupAsync(string groupName);
 
         /// <summary>
         /// Joins a group.
@@ -283,7 +248,7 @@ namespace Extreal.Integration.Messaging
         /// </summary>
         /// <param name="message">Message to be sent.</param>
         /// <param name="to">
-        ///     User ID of the destination.
+        ///     Client ID of the destination.
         ///     <para>Sends a message to the entire group if not specified.</para>
         /// </param>
         /// <exception cref="ArgumentNullException">When message is null.</exception>
@@ -294,7 +259,7 @@ namespace Extreal.Integration.Messaging
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (!IsJoinedGroup)
+            if (!isJoined)
             {
                 if (Logger.IsWarn())
                 {
@@ -311,7 +276,7 @@ namespace Extreal.Integration.Messaging
         /// </summary>
         /// <param name="message">Message to be sent.</param>
         /// <param name="to">
-        ///     User ID of the destination.
+        ///     Client ID of the destination.
         ///     <para>Sends a message to the entire group if value is default.</para>
         /// </param>
         /// <exception cref="ArgumentNullException">When message is null.</exception>
