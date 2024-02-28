@@ -38,20 +38,19 @@ namespace Extreal.Integration.Messaging
         });
 
         /// <summary>
-        /// <para>Invokes just before this client leaves a group.</para>
-        /// Arg: reason why this client leaves.
+        /// Invokes just before this client leaves a group.
         /// </summary>
-        public IObservable<string> OnLeaving => onLeaving;
-        private readonly Subject<string> onLeaving;
-        protected void FireOnLeaving(string reason) => UniTask.Void(async () =>
+        public IObservable<Unit> OnLeaving => onLeaving;
+        private readonly Subject<Unit> onLeaving;
+        protected void FireOnLeaving() => UniTask.Void(async () =>
         {
             await UniTask.SwitchToMainThread();
 
             if (Logger.IsDebug())
             {
-                Logger.LogDebug($"{nameof(FireOnLeaving)}: reason={reason}");
+                Logger.LogDebug($"{nameof(FireOnLeaving)}");
             }
-            onLeaving.OnNext(reason);
+            onLeaving.OnNext(Unit.Default);
         });
 
         /// <summary>
@@ -150,7 +149,7 @@ namespace Extreal.Integration.Messaging
         protected MessagingClient()
         {
             onJoined = new Subject<string>().AddTo(disposables);
-            onLeaving = new Subject<string>().AddTo(disposables);
+            onLeaving = new Subject<Unit>().AddTo(disposables);
             onUnexpectedLeft = new Subject<string>().AddTo(disposables);
             onClientJoined = new Subject<string>().AddTo(disposables);
             onClientLeaving = new Subject<string>().AddTo(disposables);
@@ -162,7 +161,7 @@ namespace Extreal.Integration.Messaging
                 .AddTo(disposables);
 
             OnLeaving
-                .Merge(OnUnexpectedLeft)
+                .Merge(OnUnexpectedLeft.Select(_ => Unit.Default))
                 .Subscribe(_ => isJoined = false)
                 .AddTo(disposables);
 
@@ -231,7 +230,7 @@ namespace Extreal.Integration.Messaging
             {
                 Logger.LogDebug(nameof(LeaveAsync));
             }
-            FireOnLeaving("leave request");
+            FireOnLeaving();
             return DoLeaveAsync();
         }
 
@@ -239,7 +238,7 @@ namespace Extreal.Integration.Messaging
         /// Leaves a group in sub class.
         /// </summary>
         /// <remarks>
-        /// OnLeaving event with "leave request" parameter is fired on super class.
+        /// OnLeaving event is fired on super class.
         /// </remarks>
         protected abstract UniTask DoLeaveAsync();
 

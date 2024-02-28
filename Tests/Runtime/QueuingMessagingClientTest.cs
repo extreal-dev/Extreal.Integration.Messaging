@@ -36,7 +36,7 @@ namespace Extreal.Integration.Messaging.Test
                 .AddTo(disposables);
 
             queuingMessagingClient.OnLeaving
-                .Subscribe(eventHandler.SetLeavingReason)
+                .Subscribe(_ => eventHandler.SetIsLeaving(true))
                 .AddTo(disposables);
 
             queuingMessagingClient.OnUnexpectedLeft
@@ -134,11 +134,11 @@ namespace Extreal.Integration.Messaging.Test
             var joiningConfig = new MessagingJoiningConfig("MessagingTest");
             await queuingMessagingClient.JoinAsync(joiningConfig);
 
-            Assert.That(eventHandler.LeavingReason, Is.Null);
+            Assert.That(eventHandler.IsLeaving, Is.False);
 
             await queuingMessagingClient.LeaveAsync();
 
-            Assert.That(eventHandler.LeavingReason, Is.EqualTo("leave request"));
+            Assert.That(eventHandler.IsLeaving, Is.True);
         });
 
         [Test]
@@ -250,9 +250,9 @@ namespace Extreal.Integration.Messaging.Test
             public void SetClientId(string clientId)
                 => ClientId = clientId;
 
-            public string LeavingReason { get; private set; }
-            public void SetLeavingReason(string reason)
-                => LeavingReason = reason;
+            public bool IsLeaving { get; private set; }
+            public void SetIsLeaving(bool isLeaving)
+                => IsLeaving = isLeaving;
 
             public string UnexpectedLeftReason { get; private set; }
             public void SetUnexpectedLeftReason(string reason)
@@ -281,7 +281,7 @@ namespace Extreal.Integration.Messaging.Test
             public void Clear()
             {
                 SetClientId(default);
-                SetLeavingReason(default);
+                SetIsLeaving(default);
                 SetUnexpectedLeftReason(default);
                 SetIsJoiningApprovalRejected(default);
                 SetJoinedClientId(default);

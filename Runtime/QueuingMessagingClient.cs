@@ -23,10 +23,9 @@ namespace Extreal.Integration.Messaging
         public IObservable<string> OnJoined => messagingClient.OnJoined;
 
         /// <summary>
-        /// <para>Invokes just before this client leaves a group.</para>
-        /// Arg: reason why this client leaves.
+        /// Invokes just before this client leaves a group.
         /// </summary>
-        public IObservable<string> OnLeaving => messagingClient.OnLeaving;
+        public IObservable<Unit> OnLeaving => messagingClient.OnLeaving;
 
         /// <summary>
         /// <para>Invokes immediately after this client unexpectedly leaves a group.</para>
@@ -79,7 +78,7 @@ namespace Extreal.Integration.Messaging
                 .AddTo(disposables);
 
             messagingClient.OnLeaving
-                .Merge(messagingClient.OnUnexpectedLeft)
+                .Merge(messagingClient.OnUnexpectedLeft.Select(_ => Unit.Default))
                 .Subscribe(_ => isJoined = false)
                 .AddTo(disposables);
 
