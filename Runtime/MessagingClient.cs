@@ -15,12 +15,6 @@ namespace Extreal.Integration.Messaging
     public abstract class MessagingClient : DisposableBase
     {
         /// <summary>
-        /// IDs of joined clients.
-        /// </summary>
-        public IReadOnlyList<string> JoinedClients => joinedClients;
-        private readonly List<string> joinedClients = new List<string>();
-
-        /// <summary>
         /// <para>Invokes immediately after this client joined a group.</para>
         /// Arg: Client ID of this client.
         /// </summary>
@@ -163,14 +157,6 @@ namespace Extreal.Integration.Messaging
             OnLeaving
                 .Merge(OnUnexpectedLeft.Select(_ => Unit.Default))
                 .Subscribe(_ => isJoined = false)
-                .AddTo(disposables);
-
-            OnClientJoined
-                .Subscribe(joinedClients.Add)
-                .AddTo(disposables);
-
-            OnClientLeaving
-                .Subscribe(clientId => joinedClients.Remove(clientId))
                 .AddTo(disposables);
         }
 

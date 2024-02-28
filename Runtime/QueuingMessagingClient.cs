@@ -12,11 +12,6 @@ namespace Extreal.Integration.Messaging
     public class QueuingMessagingClient : DisposableBase
     {
         /// <summary>
-        /// IDs of joined clients.
-        /// </summary>
-        public IReadOnlyList<string> JoinedClients => messagingClient.JoinedClients;
-
-        /// <summary>
         /// <para>Invokes immediately after this client joined a group.</para>
         /// Arg: Client ID of this client.
         /// </summary>
