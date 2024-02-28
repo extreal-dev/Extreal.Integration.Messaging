@@ -153,23 +153,18 @@ namespace Extreal.Integration.Messaging.Test
         public void ClientJoined()
         {
             Assert.That(eventHandler.JoinedClientId, Is.Null);
-            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.Zero);
             messagingClient.FireOnClientJoined();
             Assert.That(eventHandler.JoinedClientId, Is.EqualTo(otherClientId));
-            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.EqualTo(1));
-            Assert.That(queuingMessagingClient.JoinedClients[0], Is.EqualTo(eventHandler.JoinedClientId));
         }
 
         [Test]
         public void ClientLeaving()
         {
             messagingClient.FireOnClientJoined();
-            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.EqualTo(1));
 
             Assert.That(eventHandler.LeavingClientId, Is.Null);
             messagingClient.FireOnClientLeaving();
             Assert.That(eventHandler.LeavingClientId, Is.EqualTo(otherClientId));
-            Assert.That(queuingMessagingClient.JoinedClients.Count, Is.Zero);
         }
 
         [UnityTest]
